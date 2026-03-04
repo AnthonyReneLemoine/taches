@@ -71,6 +71,13 @@
       gap: 0.35rem;
     }
 
+    .app-version {
+      font-size: 0.72rem;
+      opacity: 0.85;
+      margin-top: 0.35rem;
+      text-align: center;
+    }
+
     .sync-status.syncing {
       animation: pulse 1.5s infinite;
     }
@@ -601,6 +608,7 @@
       <div id="syncStatus" class="sync-status">
         <i class="bi bi-cloud-check"></i> <span>Synchronisé</span>
       </div>
+      <div class="app-version">Version <span id="appVersion"></span></div>
     </div>
 
     <!-- Zone d'ajout -->
@@ -669,6 +677,7 @@
   let tags = ['Travail', 'Perso', 'Courses', 'Divers'];
   let currentFilter = 'Travail';
   let isLoading = true;
+  const APP_VERSION = '2';
 
   // URL de la Web App Apps Script (Option C)
   // Peut être injectée via window.TACHES_API_URL avant ce script.
@@ -740,6 +749,7 @@
 
   // === Initialisation ===
   document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('appVersion').textContent = APP_VERSION;
     // Événement Enter sur l'input
     document.getElementById('inputTask').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
