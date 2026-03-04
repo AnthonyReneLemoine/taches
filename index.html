@@ -670,6 +670,74 @@
   let currentFilter = 'Travail';
   let isLoading = true;
 
+  // URL de la Web App Apps Script (Option C)
+  // Peut être injectée via window.TACHES_API_URL avant ce script.
+  const API_URL = (window.TACHES_API_URL || '').trim();
+
+  function ensureApiUrl() {
+    if (!API_URL) {
+      throw new Error('URL API manquante : définissez window.TACHES_API_URL');
+    }
+    return API_URL;
+  }
+
+  function requestApi(action, payload) {
+    var body = new URLSearchParams();
+    body.set('action', action);
+
+    Object.keys(payload || {}).forEach(function(key) {
+      if (payload[key] !== undefined && payload[key] !== null) {
+        body.set(key, payload[key]);
+      }
+    });
+
+    return fetch(ensureApiUrl(), {
+      method: 'POST',
+      body: body
+    }).then(function(response) {
+      if (!response.ok) {
+        throw new Error('Erreur HTTP ' + response.status);
+      }
+      return response.json();
+    }).then(function(json) {
+      if (!json.success) {
+        throw new Error(json.error || 'Erreur API');
+      }
+      return json.data;
+    });
+  }
+
+  const taskService = {
+    getAll: function() {
+      var url = ensureApiUrl() + (ensureApiUrl().indexOf('?') === -1 ? '?' : '&') + 'action=list';
+      return fetch(url)
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('Erreur HTTP ' + response.status);
+          }
+          return response.json();
+        })
+        .then(function(json) {
+          if (!json.success) {
+            throw new Error(json.error || 'Erreur API');
+          }
+          return json.data;
+        });
+    },
+    create: function(task) {
+      return requestApi('add', task);
+    },
+    update: function(id, titre, categorie) {
+      return requestApi('update', { id: id, titre: titre, categorie: categorie });
+    },
+    toggle: function(id) {
+      return requestApi('toggle', { id: id });
+    },
+    remove: function(id) {
+      return requestApi('delete', { id: id });
+    }
+  };
+
   // === Initialisation ===
   document.addEventListener('DOMContentLoaded', function() {
     // Événement Enter sur l'input
@@ -705,8 +773,8 @@
     renderTasks();
     setSyncStatus('loading');
 
-    google.script.run
-      .withSuccessHandler(function(data) {
+    taskService.getAll()
+      .then(function(data) {
         tasks = data || [];
         extractTags();
         updateTagSelects();
@@ -716,13 +784,12 @@
         updateStats();
         setSyncStatus('synced');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         isLoading = false;
         showToast('Erreur de chargement : ' + error.message, 'error');
         setSyncStatus('error');
         renderTasks();
-      })
-      .getTaches();
+      });
   }
 
   // === Extraction des tags depuis les tâches ===
@@ -889,20 +956,19 @@
     input.focus();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function() {
+    taskService.create({ id: id, titre: title, categorie: category, date: date })
+      .then(function() {
         setSyncStatus('synced');
         showToast('Tâche ajoutée', 'success');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         tasks = tasks.filter(function(t) { return t.id !== id; });
         renderTasks();
         updateStats();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .ajouterTache(id, title, category, date);
+      });
   }
 
   // === Basculer le statut d'une tâche ===
@@ -921,13 +987,13 @@
     updateStats();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function(result) {
-        task.dateFait = result.dateFait || '';
+    taskService.toggle(id)
+      .then(function(result) {
+        task.dateFait = (result && result.dateFait) || '';
         renderTasks();
         setSyncStatus('synced');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         task.statut = oldStatus;
         task.dateFait = oldDateFait;
@@ -935,8 +1001,7 @@
         updateStats();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .basculerStatut(id);
+      });
   }
 
   // === Supprimer une tâche ===
@@ -954,20 +1019,19 @@
     updateStats();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function() {
+    taskService.remove(id)
+      .then(function() {
         setSyncStatus('synced');
         showToast('Tâche supprimée', 'success');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         tasks.splice(taskIndex, 0, deletedTask);
         renderTasks();
         updateStats();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .supprimerTache(id);
+      });
   }
 
   // === Ouvrir le modal d'édition ===
@@ -1040,20 +1104,19 @@
     closeEditModal();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function() {
+    taskService.update(id, newTitle, newCategory)
+      .then(function() {
         setSyncStatus('synced');
         showToast('Tâche modifiée', 'success');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         task.titre = oldTitle;
         task.categorie = oldCategory;
         renderTasks();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .modifierTache(id, newTitle, newCategory);
+      });
   }
 
   // === Créer un nouveau tag ===
