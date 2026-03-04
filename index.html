@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestionnaire de Tâches</title>
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #4361ee;
+      --primary-hover: #3a56d4;
+      --success-color: #2ec4b6;
+      --danger-color: #e63946;
+      --warning-color: #f77f00;
+      --bg-color: #f8f9fa;
+      --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      --transition: all 0.25s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      padding: 1rem;
+    }
+
+    .app-container {
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .app-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+    }
+
+    /* Header */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary-color) 0%, #7209b7 100%);
+      color: white;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .app-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .sync-status {
+      font-size: 0.75rem;
+      opacity: 0.9;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .sync-status.syncing {
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Stats */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 0.8rem;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* Zone d'ajout */
+    .add-section {
+      padding: 1.25rem;
+      background: #fafbfc;
+      border-bottom: 1px solid #eee;
+    }
+
+    .add-form {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .add-form .form-control {
+      flex: 1;
+      min-width: 180px;
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+      padding: 0.6rem 1rem;
+      transition: var(--transition);
+    }
+
+    .add-form .form-control:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+
+    .add-form .form-select {
+      width: auto;
+      min-width: 120px;
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+      padding: 0.6rem 2rem 0.6rem 0.75rem;
+      cursor: pointer;
+    }
+
+    .add-form .form-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+
+    .btn-add-tag {
+      border-radius: 10px;
+      padding: 0.6rem 0.9rem;
+      border: 2px dashed #dee2e6;
+      background: white;
+      color: #6c757d;
+      transition: var(--transition);
+    }
+
+    .btn-add-tag:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      background: #f8f9ff;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1.25rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    /* Filtres */
+    .filter-section {
+      padding: 0.75rem 1.25rem;
+      background: white;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-label {
+      font-size: 0.8rem;
+      color: #6c757d;
+      font-weight: 500;
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .filter-chip {
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      border: 1px solid #dee2e6;
+      background: white;
+      color: #495057;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-chip:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .filter-chip.active {
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    /* Liste des tâches */
+    .tasks-section {
+      padding: 0.5rem 0;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #f0f0f0;
+      transition: var(--transition);
+      gap: 0.75rem;
+    }
+
+    .task-item:hover {
+      background: #fafbfc;
+    }
+
+    .task-item:last-child {
+      border-bottom: none;
+    }
+
+    .task-item.completed {
+      background: #f8f9fa;
+    }
+
+    .task-item.completed .task-title {
+      text-decoration: line-through;
+      color: #adb5bd;
+    }
+
+    .task-item.completed .task-category {
+      opacity: 0.5;
+    }
+
+    /* Checkbox custom */
+    .task-checkbox {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 2px solid #dee2e6;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .task-checkbox:hover {
+      border-color: var(--success-color);
+    }
+
+    .task-checkbox.checked {
+      background: var(--success-color);
+      border-color: var(--success-color);
+      color: white;
+    }
+
+    .task-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-title {
+      font-size: 0.95rem;
+      color: #212529;
+      word-break: break-word;
+    }
+
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+      flex-wrap: wrap;
+    }
+
+    .task-category {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      background: #e9ecef;
+      color: #495057;
+      font-weight: 500;
+    }
+
+    .task-date {
+      font-size: 0.7rem;
+      color: #adb5bd;
+    }
+
+    .task-date-fait {
+      font-size: 0.7rem;
+      color: var(--success-color);
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 0.25rem;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .task-item:hover .task-actions {
+      opacity: 1;
+    }
+
+    .btn-task-action {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #adb5bd;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .btn-task-action:hover {
+      background: #f0f0f0;
+      color: #495057;
+    }
+
+    .btn-task-action.delete:hover {
+      background: #fee2e2;
+      color: var(--danger-color);
+    }
+
+    /* États vides et chargement */
+    .empty-state, .loading-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: #6c757d;
+    }
+
+    .empty-state i, .loading-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .loading-state i {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Modal d'édition */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition);
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      transform: scale(0.9);
+      transition: var(--transition);
+    }
+
+    .modal-overlay.show .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header h5 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 0.25rem;
+      line-height: 1;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    .modal-body .form-label {
+      font-weight: 500;
+      font-size: 0.85rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .modal-body .form-control,
+    .modal-body .form-select {
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+      padding: 0.6rem 0.9rem;
+    }
+
+    .modal-body .form-control:focus,
+    .modal-body .form-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+
+    .modal-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .btn-secondary {
+      background: #e9ecef;
+      border: none;
+      color: #495057;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 500;
+    }
+
+    .btn-secondary:hover {
+      background: #dee2e6;
+      color: #212529;
+    }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: #212529;
+      color: white;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: slideIn 0.3s ease;
+      max-width: 300px;
+    }
+
+    .toast.error {
+      background: var(--danger-color);
+    }
+
+    .toast.success {
+      background: var(--success-color);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+      body {
+        padding: 0.5rem;
+      }
+
+      .app-header {
+        padding: 1.25rem 1rem;
+      }
+
+      .app-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .add-section {
+        padding: 1rem;
+      }
+
+      .add-form {
+        flex-direction: column;
+      }
+
+      .add-form .form-control,
+      .add-form .form-select {
+        width: 100%;
+      }
+
+      .add-form .btn-add-tag {
+        display: none;
+      }
+
+      .filter-section {
+        padding: 0.6rem 1rem;
+      }
+
+      .task-item {
+        padding: 0.85rem 1rem;
+      }
+
+      .task-actions {
+        opacity: 1;
+      }
+
+      .stats-bar {
+        gap: 1rem;
+        font-size: 0.75rem;
+      }
+    }
+
+    /* Scrollbar custom */
+    .tasks-section::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tasks-section::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .tasks-section::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 3px;
+    }
+
+    .tasks-section::-webkit-scrollbar-thumb:hover {
+      background: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="app-card">
+    <!-- Header -->
+    <div class="app-header">
+      <h1><i class="bi bi-check2-square"></i> Mon Gestionnaire</h1>
+      <div class="stats-bar">
+        <span class="stat-item"><i class="bi bi-list-task"></i> <span id="statTotal">0</span> tâches</span>
+        <span class="stat-item"><i class="bi bi-hourglass-split"></i> <span id="statTodo">0</span> à faire</span>
+        <span class="stat-item"><i class="bi bi-check-circle"></i> <span id="statDone">0</span> terminées</span>
+      </div>
+      <div id="syncStatus" class="sync-status">
+        <i class="bi bi-cloud-check"></i> <span>Synchronisé</span>
+      </div>
+    </div>
+
+    <!-- Zone d'ajout -->
+    <div class="add-section">
+      <div class="add-form">
+        <input type="text" id="inputTask" class="form-control" placeholder="Ajouter une nouvelle tâche...">
+        <select id="selectCategory" class="form-select"></select>
+        <button type="button" class="btn-add-tag" onclick="createNewTag()" title="Créer un nouveau tag">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-primary" onclick="addTask()">
+          <i class="bi bi-plus-lg"></i> Ajouter
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filter-section">
+      <span class="filter-label"><i class="bi bi-funnel"></i> Filtrer :</span>
+      <div id="filterChips" class="filter-chips"></div>
+    </div>
+
+    <!-- Liste des tâches -->
+    <div id="tasksSection" class="tasks-section">
+      <div class="loading-state">
+        <i class="bi bi-arrow-repeat"></i>
+        <p>Chargement des tâches...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal d'édition -->
+<div id="editModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h5><i class="bi bi-pencil"></i> Modifier la tâche</h5>
+      <button type="button" class="modal-close" onclick="closeEditModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editTaskId">
+      <div class="mb-3">
+        <label for="editTaskTitle" class="form-label">Titre</label>
+        <input type="text" id="editTaskTitle" class="form-control" placeholder="Titre de la tâche">
+      </div>
+      <div class="mb-0">
+        <label for="editTaskCategory" class="form-label">Catégorie</label>
+        <select id="editTaskCategory" class="form-select"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button type="button" class="btn btn-primary" onclick="saveEdit()">
+        <i class="bi bi-check-lg"></i> Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Container pour les toasts -->
+<div id="toastContainer" class="toast-container"></div>
+
+<script>
+  // === État de l'application ===
+  let tasks = [];
+  let tags = ['Travail', 'Perso', 'Courses', 'Divers'];
+  let currentFilter = 'Travail';
+  let isLoading = true;
+
+  // === Initialisation ===
+  document.addEventListener('DOMContentLoaded', function() {
+    // Événement Enter sur l'input
+    document.getElementById('inputTask').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTask();
+      }
+    });
+
+    // Événement Enter sur le modal
+    document.getElementById('editTaskTitle').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit();
+      }
+    });
+
+    // Événement Escape pour fermer le modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeEditModal();
+      }
+    });
+
+    // Charger les données
+    loadTasks();
+  });
+
+  // === Chargement des données ===
+  function loadTasks() {
+    isLoading = true;
+    renderTasks();
+    setSyncStatus('loading');
+
+    google.script.run
+      .withSuccessHandler(function(data) {
+        tasks = data || [];
+        extractTags();
+        updateTagSelects();
+        renderFilterChips();
+        isLoading = false;
+        renderTasks();
+        updateStats();
+        setSyncStatus('synced');
+      })
+      .withFailureHandler(function(error) {
+        isLoading = false;
+        showToast('Erreur de chargement : ' + error.message, 'error');
+        setSyncStatus('error');
+        renderTasks();
+      })
+      .getTaches();
+  }
+
+  // === Extraction des tags depuis les tâches ===
+  function extractTags() {
+    tasks.forEach(function(task) {
+      if (task.categorie && !tags.includes(task.categorie)) {
+        tags.push(task.categorie);
+      }
+    });
+    tags.sort();
+  }
+
+  // === Mise à jour des sélecteurs de tags ===
+  function updateTagSelects() {
+    var selectAdd = document.getElementById('selectCategory');
+    var selectEdit = document.getElementById('editTaskCategory');
+    
+    var options = tags.map(function(tag) {
+      return '<option value="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</option>';
+    }).join('');
+
+    selectAdd.innerHTML = options;
+    selectEdit.innerHTML = options;
+    
+    selectAdd.value = 'Travail';
+  }
+
+  // === Rendu des chips de filtre ===
+  function renderFilterChips() {
+    var container = document.getElementById('filterChips');
+    var allTags = ['Toutes'].concat(tags);
+    
+    container.innerHTML = allTags.map(function(tag) {
+      var isActive = currentFilter === tag ? ' active' : '';
+      return '<button type="button" class="filter-chip' + isActive + '" onclick="setFilter(\'' + escapeAttr(tag) + '\')">' + 
+             escapeHtml(tag) + '</button>';
+    }).join('');
+  }
+
+  // === Définir le filtre ===
+  function setFilter(filter) {
+    currentFilter = filter;
+    renderFilterChips();
+    renderTasks();
+  }
+
+  // === Rendu de la liste des tâches ===
+  function renderTasks() {
+    var container = document.getElementById('tasksSection');
+
+    if (isLoading) {
+      container.innerHTML = '<div class="loading-state">' +
+        '<i class="bi bi-arrow-repeat"></i>' +
+        '<p>Chargement des tâches...</p>' +
+        '</div>';
+      return;
+    }
+
+    var filteredTasks = tasks;
+    if (currentFilter !== 'Toutes') {
+      filteredTasks = tasks.filter(function(t) {
+        return t.categorie === currentFilter;
+      });
+    }
+
+    if (filteredTasks.length === 0) {
+      var message = currentFilter === 'Toutes' 
+        ? 'Aucune tâche pour le moment' 
+        : 'Aucune tâche dans "' + escapeHtml(currentFilter) + '"';
+      container.innerHTML = '<div class="empty-state">' +
+        '<i class="bi bi-inbox"></i>' +
+        '<p>' + message + '</p>' +
+        '</div>';
+      return;
+    }
+
+    // Tri : À faire en premier (plus récent en haut), Terminé ensuite (plus ancien en haut)
+    var sorted = filteredTasks.slice().sort(function(a, b) {
+      var aIsTodo = a.statut === 'À faire' ? 0 : 1;
+      var bIsTodo = b.statut === 'À faire' ? 0 : 1;
+      if (aIsTodo !== bIsTodo) {
+        return aIsTodo - bIsTodo;
+      }
+      var aIdx = tasks.indexOf(a);
+      var bIdx = tasks.indexOf(b);
+      if (a.statut === 'Terminé') {
+        // Terminées : ordre chronologique inversé (plus ancien en haut = index plus grand en haut)
+        return bIdx - aIdx;
+      }
+      // À faire : plus récent en haut (index plus petit en haut)
+      return aIdx - bIdx;
+    });
+
+    container.innerHTML = sorted.map(function(task) {
+      var isCompleted = task.statut === 'Terminé';
+      var itemClass = 'task-item' + (isCompleted ? ' completed' : '');
+      var checkboxClass = 'task-checkbox' + (isCompleted ? ' checked' : '');
+      var checkIcon = isCompleted ? '<i class="bi bi-check"></i>' : '';
+      var safeId = escapeAttr(task.id);
+
+      return '<div class="' + itemClass + '" data-id="' + escapeHtml(task.id) + '">' +
+        '<div class="' + checkboxClass + '" onclick="toggleTask(\'' + safeId + '\')">' + checkIcon + '</div>' +
+        '<div class="task-content">' +
+          '<div class="task-title">' + escapeHtml(task.titre) + '</div>' +
+          '<div class="task-meta">' +
+            '<span class="task-category">' + escapeHtml(task.categorie) + '</span>' +
+            '<span class="task-date">' + escapeHtml(displayDate(task.date)) + '</span>' +
+            (isCompleted && task.dateFait ? '<span class="task-date-fait"><i class="bi bi-check2"></i> ' + escapeHtml(task.dateFait) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="task-actions">' +
+          '<button type="button" class="btn-task-action" onclick="openEditModal(\'' + safeId + '\')" title="Modifier">' +
+            '<i class="bi bi-pencil"></i>' +
+          '</button>' +
+          '<button type="button" class="btn-task-action delete" onclick="deleteTask(\'' + safeId + '\')" title="Supprimer">' +
+            '<i class="bi bi-trash"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // === Mise à jour des statistiques ===
+  function updateStats() {
+    var total = tasks.length;
+    var todo = tasks.filter(function(t) { return t.statut === 'À faire'; }).length;
+    var done = total - todo;
+
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statTodo').textContent = todo;
+    document.getElementById('statDone').textContent = done;
+  }
+
+  // === Ajouter une tâche ===
+  function addTask() {
+    var input = document.getElementById('inputTask');
+    var select = document.getElementById('selectCategory');
+    var title = input.value.trim();
+
+    if (!title) {
+      showToast('Veuillez saisir un titre', 'error');
+      input.focus();
+      return;
+    }
+
+    var id = 'ID-' + Date.now();
+    var now = new Date();
+    var date = formatDateFr(now);
+    var category = select.value;
+
+    var newTask = {
+      id: id,
+      titre: title,
+      statut: 'À faire',
+      date: date,
+      categorie: category
+    };
+
+    // Optimistic update
+    tasks.unshift(newTask);
+    renderTasks();
+    updateStats();
+    input.value = '';
+    input.focus();
+
+    setSyncStatus('syncing');
+    google.script.run
+      .withSuccessHandler(function() {
+        setSyncStatus('synced');
+        showToast('Tâche ajoutée', 'success');
+      })
+      .withFailureHandler(function(error) {
+        // Rollback
+        tasks = tasks.filter(function(t) { return t.id !== id; });
+        renderTasks();
+        updateStats();
+        setSyncStatus('error');
+        showToast('Erreur : ' + error.message, 'error');
+      })
+      .ajouterTache(id, title, category, date);
+  }
+
+  // === Basculer le statut d'une tâche ===
+  function toggleTask(id) {
+    var task = tasks.find(function(t) { return t.id === id; });
+    if (!task) return;
+
+    var oldStatus = task.statut;
+    var oldDateFait = task.dateFait || '';
+    var newStatus = oldStatus === 'À faire' ? 'Terminé' : 'À faire';
+
+    // Optimistic update
+    task.statut = newStatus;
+    task.dateFait = newStatus === 'À faire' ? '' : '…';
+    renderTasks();
+    updateStats();
+
+    setSyncStatus('syncing');
+    google.script.run
+      .withSuccessHandler(function(result) {
+        task.dateFait = result.dateFait || '';
+        renderTasks();
+        setSyncStatus('synced');
+      })
+      .withFailureHandler(function(error) {
+        // Rollback
+        task.statut = oldStatus;
+        task.dateFait = oldDateFait;
+        renderTasks();
+        updateStats();
+        setSyncStatus('error');
+        showToast('Erreur : ' + error.message, 'error');
+      })
+      .basculerStatut(id);
+  }
+
+  // === Supprimer une tâche ===
+  function deleteTask(id) {
+    if (!confirm('Supprimer cette tâche ?')) return;
+
+    var taskIndex = tasks.findIndex(function(t) { return t.id === id; });
+    if (taskIndex === -1) return;
+
+    var deletedTask = tasks[taskIndex];
+
+    // Optimistic update
+    tasks.splice(taskIndex, 1);
+    renderTasks();
+    updateStats();
+
+    setSyncStatus('syncing');
+    google.script.run
+      .withSuccessHandler(function() {
+        setSyncStatus('synced');
+        showToast('Tâche supprimée', 'success');
+      })
+      .withFailureHandler(function(error) {
+        // Rollback
+        tasks.splice(taskIndex, 0, deletedTask);
+        renderTasks();
+        updateStats();
+        setSyncStatus('error');
+        showToast('Erreur : ' + error.message, 'error');
+      })
+      .supprimerTache(id);
+  }
+
+  // === Ouvrir le modal d'édition ===
+  function openEditModal(id) {
+    var task = tasks.find(function(t) { return t.id === id; });
+    if (!task) return;
+
+    document.getElementById('editTaskId').value = task.id;
+    document.getElementById('editTaskTitle').value = task.titre;
+    
+    // S'assurer que la catégorie existe dans le select
+    var selectEdit = document.getElementById('editTaskCategory');
+    if (!tags.includes(task.categorie)) {
+      tags.push(task.categorie);
+      tags.sort();
+      updateTagSelects();
+    }
+    selectEdit.value = task.categorie;
+
+    document.getElementById('editModal').classList.add('show');
+    setTimeout(function() {
+      document.getElementById('editTaskTitle').focus();
+      document.getElementById('editTaskTitle').select();
+    }, 100);
+  }
+
+  // === Fermer le modal d'édition ===
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+  }
+
+  // === Fermer le modal en cliquant sur l'overlay ===
+  function closeModalOnOverlay(event) {
+    if (event.target === event.currentTarget) {
+      closeEditModal();
+    }
+  }
+
+  // === Sauvegarder les modifications ===
+  function saveEdit() {
+    var id = document.getElementById('editTaskId').value;
+    var newTitle = document.getElementById('editTaskTitle').value.trim();
+    var newCategory = document.getElementById('editTaskCategory').value;
+
+    if (!newTitle) {
+      showToast('Le titre ne peut pas être vide', 'error');
+      document.getElementById('editTaskTitle').focus();
+      return;
+    }
+
+    var task = tasks.find(function(t) { return t.id === id; });
+    if (!task) return;
+
+    var oldTitle = task.titre;
+    var oldCategory = task.categorie;
+
+    // Optimistic update
+    task.titre = newTitle;
+    task.categorie = newCategory;
+
+    // Ajouter le nouveau tag si nécessaire
+    if (!tags.includes(newCategory)) {
+      tags.push(newCategory);
+      tags.sort();
+      updateTagSelects();
+      renderFilterChips();
+    }
+
+    renderTasks();
+    closeEditModal();
+
+    setSyncStatus('syncing');
+    google.script.run
+      .withSuccessHandler(function() {
+        setSyncStatus('synced');
+        showToast('Tâche modifiée', 'success');
+      })
+      .withFailureHandler(function(error) {
+        // Rollback
+        task.titre = oldTitle;
+        task.categorie = oldCategory;
+        renderTasks();
+        setSyncStatus('error');
+        showToast('Erreur : ' + error.message, 'error');
+      })
+      .modifierTache(id, newTitle, newCategory);
+  }
+
+  // === Créer un nouveau tag ===
+  function createNewTag() {
+    var newTag = prompt('Nom du nouveau tag :');
+    if (!newTag) return;
+
+    newTag = newTag.trim();
+    if (!newTag) {
+      showToast('Le nom du tag ne peut pas être vide', 'error');
+      return;
+    }
+
+    if (tags.includes(newTag)) {
+      showToast('Ce tag existe déjà', 'error');
+      return;
+    }
+
+    tags.push(newTag);
+    tags.sort();
+    updateTagSelects();
+    renderFilterChips();
+
+    document.getElementById('selectCategory').value = newTag;
+    showToast('Tag "' + newTag + '" créé', 'success');
+  }
+
+  // === Indicateur de synchronisation ===
+  function setSyncStatus(status) {
+    var el = document.getElementById('syncStatus');
+    el.classList.remove('syncing');
+
+    switch (status) {
+      case 'loading':
+        el.innerHTML = '<i class="bi bi-arrow-repeat"></i> <span>Chargement...</span>';
+        el.classList.add('syncing');
+        break;
+      case 'syncing':
+        el.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> <span>Synchronisation...</span>';
+        el.classList.add('syncing');
+        break;
+      case 'synced':
+        el.innerHTML = '<i class="bi bi-cloud-check"></i> <span>Synchronisé</span>';
+        break;
+      case 'error':
+        el.innerHTML = '<i class="bi bi-cloud-slash"></i> <span>Erreur de sync</span>';
+        break;
+    }
+  }
+
+  // === Afficher un toast ===
+  function showToast(message, type) {
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'toast' + (type ? ' ' + type : '');
+    
+    var icon = type === 'success' ? 'check-circle' : (type === 'error' ? 'exclamation-circle' : 'info-circle');
+    toast.innerHTML = '<i class="bi bi-' + icon + '"></i> ' + escapeHtml(message);
+    
+    container.appendChild(toast);
+
+    setTimeout(function() {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      setTimeout(function() {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  // === Formater une date en français lisible ===
+  function formatDateFr(date) {
+    if (!(date instanceof Date) || isNaN(date)) return '';
+    return date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    }) + ' à ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+  }
+
+  // === Convertir une date stockée (ancien ou nouveau format) en affichage français ===
+  function displayDate(rawDate) {
+    if (!rawDate) return '';
+    // Tenter de parser la date brute
+    var d = new Date(rawDate);
+    if (!isNaN(d)) return formatDateFr(d);
+    // Ancien format "dd/mm/yyyy hh:mm" → parser manuellement
+    var m = rawDate.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if (m) {
+      d = new Date(m[3], m[2] - 1, m[1], m[4], m[5]);
+      if (!isNaN(d)) return formatDateFr(d);
+    }
+    // Si rien ne fonctionne, afficher tel quel
+    return rawDate;
+  }
+
+  // === Échapper le HTML pour éviter les XSS ===
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    var str = String(text);
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // === Échapper pour les attributs HTML (onclick, etc.) ===
+  function escapeAttr(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+</script>
+
+</body>
+</html>
