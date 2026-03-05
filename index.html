@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestionnaire de Tâches</title>
   <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
   <style>
     :root {
       --primary-color: #4361ee;
@@ -664,6 +668,23 @@
 <div id="toastContainer" class="toast-container"></div>
 
 <script>
+  // =====================================================================
+  // CONFIGURATION FIREBASE
+  // Remplacez ces valeurs par celles de votre projet Firebase :
+  // Firebase Console > Paramètres du projet > Vos applications > SDK
+  // =====================================================================
+  var firebaseConfig = {
+    apiKey:            "VOTRE_API_KEY",
+    authDomain:        "VOTRE_PROJET.firebaseapp.com",
+    projectId:         "VOTRE_PROJECT_ID",
+    storageBucket:     "VOTRE_PROJET.appspot.com",
+    messagingSenderId: "VOTRE_SENDER_ID",
+    appId:             "VOTRE_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+  var COLLECTION = 'taches';
+
   // === État de l'application ===
   let tasks = [];
   let tags = ['Travail', 'Perso', 'Courses', 'Divers'];
@@ -699,15 +720,17 @@
     loadTasks();
   });
 
-  // === Chargement des données ===
+  // === Chargement des données depuis Firestore ===
   function loadTasks() {
     isLoading = true;
     renderTasks();
     setSyncStatus('loading');
 
-    google.script.run
-      .withSuccessHandler(function(data) {
-        tasks = data || [];
+    db.collection(COLLECTION).get()
+      .then(function(snapshot) {
+        var data = [];
+        snapshot.forEach(function(doc) { data.push(doc.data()); });
+        tasks = data;
         extractTags();
         updateTagSelects();
         renderFilterChips();
@@ -716,13 +739,12 @@
         updateStats();
         setSyncStatus('synced');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         isLoading = false;
         showToast('Erreur de chargement : ' + error.message, 'error');
         setSyncStatus('error');
         renderTasks();
-      })
-      .getTaches();
+      });
   }
 
   // === Extraction des tags depuis les tâches ===
@@ -878,7 +900,8 @@
       titre: title,
       statut: 'À faire',
       date: date,
-      categorie: category
+      categorie: category,
+      dateFait: ''
     };
 
     // Optimistic update
@@ -889,20 +912,19 @@
     input.focus();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function() {
+    db.collection(COLLECTION).doc(id).set(newTask)
+      .then(function() {
         setSyncStatus('synced');
         showToast('Tâche ajoutée', 'success');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         tasks = tasks.filter(function(t) { return t.id !== id; });
         renderTasks();
         updateStats();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .ajouterTache(id, title, category, date);
+      });
   }
 
   // === Basculer le statut d'une tâche ===
@@ -913,6 +935,7 @@
     var oldStatus = task.statut;
     var oldDateFait = task.dateFait || '';
     var newStatus = oldStatus === 'À faire' ? 'Terminé' : 'À faire';
+    var newDateFait = newStatus === 'Terminé' ? formatDateFr(new Date()) : '';
 
     // Optimistic update
     task.statut = newStatus;
@@ -921,13 +944,13 @@
     updateStats();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function(result) {
-        task.dateFait = result.dateFait || '';
+    db.collection(COLLECTION).doc(id).update({ statut: newStatus, dateFait: newDateFait })
+      .then(function() {
+        task.dateFait = newDateFait;
         renderTasks();
         setSyncStatus('synced');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         task.statut = oldStatus;
         task.dateFait = oldDateFait;
@@ -935,8 +958,7 @@
         updateStats();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .basculerStatut(id);
+      });
   }
 
   // === Supprimer une tâche ===
@@ -954,20 +976,19 @@
     updateStats();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function() {
+    db.collection(COLLECTION).doc(id).delete()
+      .then(function() {
         setSyncStatus('synced');
         showToast('Tâche supprimée', 'success');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         tasks.splice(taskIndex, 0, deletedTask);
         renderTasks();
         updateStats();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .supprimerTache(id);
+      });
   }
 
   // === Ouvrir le modal d'édition ===
@@ -1040,20 +1061,19 @@
     closeEditModal();
 
     setSyncStatus('syncing');
-    google.script.run
-      .withSuccessHandler(function() {
+    db.collection(COLLECTION).doc(id).update({ titre: newTitle, categorie: newCategory })
+      .then(function() {
         setSyncStatus('synced');
         showToast('Tâche modifiée', 'success');
       })
-      .withFailureHandler(function(error) {
+      .catch(function(error) {
         // Rollback
         task.titre = oldTitle;
         task.categorie = oldCategory;
         renderTasks();
         setSyncStatus('error');
         showToast('Erreur : ' + error.message, 'error');
-      })
-      .modifierTache(id, newTitle, newCategory);
+      });
   }
 
   // === Créer un nouveau tag ===

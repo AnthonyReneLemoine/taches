@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import données — Gestionnaire de Tâches</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body { background: #f8f9fa; padding: 2rem 1rem; }
+    .container { max-width: 700px; }
+    .card { border-radius: 16px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card-header { background: linear-gradient(135deg, #4361ee, #7209b7); color: white; border-radius: 16px 16px 0 0 !important; }
+    pre { background: #f1f3f5; padding: 1rem; border-radius: 8px; font-size: 0.8rem; }
+    #log { max-height: 300px; overflow-y: auto; }
+    .log-ok   { color: #2ec4b6; }
+    .log-err  { color: #e63946; }
+    .log-info { color: #6c757d; }
+    .step { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; }
+    .step-num { background: #4361ee; color: white; border-radius: 50%; width: 32px; height: 32px;
+                display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="card mb-4">
+    <div class="card-header p-4">
+      <h4 class="mb-0"><i class="bi bi-cloud-upload"></i> Import des données Google Sheets → Firestore</h4>
+      <p class="mb-0 mt-1 opacity-75" style="font-size:0.85rem">Outil à usage unique — à supprimer après migration</p>
+    </div>
+    <div class="card-body p-4">
+
+      <!-- Étape 1 : Config Firebase -->
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="w-100">
+          <h6 class="fw-bold">Vérifiez la configuration Firebase</h6>
+          <p class="text-muted small">Même config que dans <code>index.html</code>. Modifiez les valeurs directement dans ce fichier.</p>
+        </div>
+      </div>
+
+      <!-- Étape 2 : Export Google Sheets -->
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="w-100">
+          <h6 class="fw-bold">Exportez vos données depuis Google Apps Script</h6>
+          <p class="text-muted small">Dans votre projet GAS, ajoutez et exécutez cette fonction :</p>
+          <pre>function exporterJSON() {
+  const taches = getTaches();
+  Logger.log(JSON.stringify(taches, null, 2));
+}
+</pre>
+          <p class="text-muted small">Copiez le résultat des logs (<kbd>Ctrl+Entrée</kbd> pour exécuter, puis <i class="bi bi-list-ul"></i> Journaux d'exécution).</p>
+        </div>
+      </div>
+
+      <!-- Étape 3 : Coller le JSON -->
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="w-100">
+          <h6 class="fw-bold">Collez le JSON exporté</h6>
+          <textarea id="jsonInput" class="form-control font-monospace" rows="10"
+            placeholder='[
+  {
+    "id": "ID-1741234567890",
+    "titre": "Exemple de tâche",
+    "statut": "À faire",
+    "date": "jeudi 5 mars 2026 à 10h30",
+    "categorie": "Travail",
+    "dateFait": ""
+  }
+]'></textarea>
+        </div>
+      </div>
+
+      <!-- Étape 4 : Lancer l'import -->
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="w-100">
+          <h6 class="fw-bold">Lancez l'import</h6>
+          <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-primary" onclick="startImport()" id="btnImport">
+              <i class="bi bi-cloud-upload"></i> Importer dans Firestore
+            </button>
+            <button class="btn btn-outline-secondary" onclick="clearLog()">
+              <i class="bi bi-trash"></i> Vider le journal
+            </button>
+          </div>
+          <div id="log" class="font-monospace small border rounded p-3 bg-light" style="min-height:80px">
+            <span class="log-info">En attente...</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="alert alert-warning small">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>Après la migration :</strong> supprimez ce fichier <code>import.html</code> de votre dépôt.
+    Il n'a pas d'authentification et permettrait à n'importe qui d'écraser vos données.
+  </div>
+
+</div>
+
+<script>
+  // =====================================================================
+  // MÊME CONFIGURATION QUE index.html — à remplir avec vos valeurs
+  // =====================================================================
+  var firebaseConfig = {
+    apiKey:            "VOTRE_API_KEY",
+    authDomain:        "VOTRE_PROJET.firebaseapp.com",
+    projectId:         "VOTRE_PROJECT_ID",
+    storageBucket:     "VOTRE_PROJET.appspot.com",
+    messagingSenderId: "VOTRE_SENDER_ID",
+    appId:             "VOTRE_APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+  var COLLECTION = 'taches';
+
+  function log(msg, type) {
+    var el = document.getElementById('log');
+    var line = document.createElement('div');
+    line.className = 'log-' + (type || 'info');
+    line.textContent = new Date().toLocaleTimeString('fr-FR') + ' — ' + msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('log').innerHTML = '';
+  }
+
+  async function startImport() {
+    clearLog();
+    var btn = document.getElementById('btnImport');
+    btn.disabled = true;
+
+    var raw = document.getElementById('jsonInput').value.trim();
+    if (!raw) {
+      log('Aucune donnée saisie.', 'err');
+      btn.disabled = false;
+      return;
+    }
+
+    var taches;
+    try {
+      taches = JSON.parse(raw);
+    } catch (e) {
+      log('JSON invalide : ' + e.message, 'err');
+      btn.disabled = false;
+      return;
+    }
+
+    if (!Array.isArray(taches)) {
+      log('Le JSON doit être un tableau (commençant par [).', 'err');
+      btn.disabled = false;
+      return;
+    }
+
+    log(taches.length + ' tâches trouvées. Début de l\'import...', 'info');
+
+    var ok = 0, ko = 0;
+    for (var i = 0; i < taches.length; i++) {
+      var t = taches[i];
+      if (!t.id || !t.titre) {
+        log('Tâche ignorée (id ou titre manquant) : ' + JSON.stringify(t), 'err');
+        ko++;
+        continue;
+      }
+      // Assure les champs obligatoires avec des valeurs par défaut
+      var doc = {
+        id:        String(t.id),
+        titre:     String(t.titre),
+        statut:    t.statut    || 'À faire',
+        date:      t.date      || '',
+        categorie: t.categorie || 'Divers',
+        dateFait:  t.dateFait  || ''
+      };
+      try {
+        await db.collection(COLLECTION).doc(doc.id).set(doc);
+        log('[' + (i + 1) + '/' + taches.length + '] ✓ ' + doc.titre, 'ok');
+        ok++;
+      } catch (e) {
+        log('[' + (i + 1) + '/' + taches.length + '] ✗ ' + doc.titre + ' — ' + e.message, 'err');
+        ko++;
+      }
+    }
+
+    log('—— Import terminé : ' + ok + ' réussies, ' + ko + ' erreurs ——', 'info');
+    btn.disabled = false;
+  }
+</script>
+</body>
+</html>
