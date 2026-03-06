@@ -691,7 +691,7 @@
           <i class="bi bi-box-arrow-right"></i> <span id="userEmail"></span> — Déconnexion
         </button>
       </div>
-      <div style="margin-top:0.3rem;font-size:0.7rem;opacity:0.5;text-align:right">v3</div>
+      <div style="margin-top:0.3rem;font-size:0.7rem;opacity:0.5;text-align:right">v4</div>
     </div>
 
     <!-- Zone d'ajout -->
@@ -844,6 +844,23 @@
     setSyncStatus('loading');
 
     userCollection().get()
+      .then(function(snapshot) {
+        if (!snapshot.empty) {
+          return snapshot;
+        }
+        // Migration depuis l'ancienne collection globale
+        return db.collection('taches').get().then(function(oldSnapshot) {
+          if (oldSnapshot.empty) return snapshot;
+          var batch = db.batch();
+          oldSnapshot.forEach(function(doc) {
+            batch.set(userCollection().doc(doc.id), doc.data());
+          });
+          return batch.commit().then(function() {
+            showToast('Tâches migrées vers votre compte', 'success');
+            return userCollection().get();
+          });
+        });
+      })
       .then(function(snapshot) {
         var data = [];
         snapshot.forEach(function(doc) { data.push(doc.data()); });
