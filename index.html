@@ -875,7 +875,8 @@
       })
       .catch(function(error) {
         isLoading = false;
-        showToast('Erreur de chargement : ' + error.message, 'error');
+        console.error('Firestore error:', error.code, error.message);
+        showToast('Erreur : ' + (error.code || error.message), 'error');
         setSyncStatus('error');
         renderTasks();
       });
