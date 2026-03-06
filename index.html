@@ -691,7 +691,7 @@
           <i class="bi bi-box-arrow-right"></i> <span id="userEmail"></span> — Déconnexion
         </button>
       </div>
-      <div style="margin-top:0.3rem;font-size:0.7rem;opacity:0.5;text-align:right">v2</div>
+      <div style="margin-top:0.3rem;font-size:0.7rem;opacity:0.5;text-align:right">v3</div>
     </div>
 
     <!-- Zone d'ajout -->
@@ -771,7 +771,11 @@
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
   var auth = firebase.auth();
-  var COLLECTION = 'taches';
+  var currentUid = null;
+
+  function userCollection() {
+    return db.collection('users').doc(currentUid).collection('taches');
+  }
 
   // === Authentification ===
   function signIn() {
@@ -787,11 +791,14 @@
 
   auth.onAuthStateChanged(function(user) {
     if (user) {
+      currentUid = user.uid;
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appContainer').style.display = '';
       document.getElementById('userEmail').textContent = user.email;
       loadTasks();
     } else {
+      currentUid = null;
+      tasks = [];
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('appContainer').style.display = 'none';
     }
@@ -836,7 +843,7 @@
     renderTasks();
     setSyncStatus('loading');
 
-    db.collection(COLLECTION).get()
+    userCollection().get()
       .then(function(snapshot) {
         var data = [];
         snapshot.forEach(function(doc) { data.push(doc.data()); });
@@ -1022,7 +1029,7 @@
     input.focus();
 
     setSyncStatus('syncing');
-    db.collection(COLLECTION).doc(id).set(newTask)
+    userCollection().doc(id).set(newTask)
       .then(function() {
         setSyncStatus('synced');
         showToast('Tâche ajoutée', 'success');
@@ -1054,7 +1061,7 @@
     updateStats();
 
     setSyncStatus('syncing');
-    db.collection(COLLECTION).doc(id).update({ statut: newStatus, dateFait: newDateFait })
+    userCollection().doc(id).update({ statut: newStatus, dateFait: newDateFait })
       .then(function() {
         task.dateFait = newDateFait;
         renderTasks();
@@ -1086,7 +1093,7 @@
     updateStats();
 
     setSyncStatus('syncing');
-    db.collection(COLLECTION).doc(id).delete()
+    userCollection().doc(id).delete()
       .then(function() {
         setSyncStatus('synced');
         showToast('Tâche supprimée', 'success');
@@ -1171,7 +1178,7 @@
     closeEditModal();
 
     setSyncStatus('syncing');
-    db.collection(COLLECTION).doc(id).update({ titre: newTitle, categorie: newCategory })
+    userCollection().doc(id).update({ titre: newTitle, categorie: newCategory })
       .then(function() {
         setSyncStatus('synced');
         showToast('Tâche modifiée', 'success');
